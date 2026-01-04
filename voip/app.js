@@ -171,10 +171,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!messaging) return;
         try {
             const vapidKey = 'BKKrCfIl9v3peqep2D_SNMFxkz3adPJ-z3vGy5aKBllSTjUVg6Da4I_JhMgIRqJslln9fMUqlhyP-P348SMA1cc'; 
-            
-            // If you don't have one yet, try calling getToken() with no args (might work if default is set)
-            // But explicitly passing it is better.
-            const token = await messaging.getToken({ vapidKey: vapidKey });
+
+            // IMPORTANT:
+            // If you don't pass a SW registration, Firebase Messaging will try the default:
+            //   /firebase-messaging-sw.js
+            // We register it ourselves relative to the current page, then pass the registration
+            // so Firebase uses the correct path even when hosted under a subdirectory.
+            let swReg;
+            if ('serviceWorker' in navigator) {
+                try {
+                    const swUrl = new URL('firebase-messaging-sw.js', window.location.href);
+                    swReg = await navigator.serviceWorker.register(swUrl.toString());
+                    await navigator.serviceWorker.ready;
+                    console.log('Messaging service worker registered:', swUrl.toString());
+                } catch (e) {
+                    console.log('Service worker registration failed:', e);
+                }
+            }
+
+            const token = await messaging.getToken({
+                vapidKey,
+                ...(swReg ? { serviceWorkerRegistration: swReg } : {})
+            });
             // Note: In newer Firebase versions, vapidKey is required for getToken. 
             // For prototype we'll assume it works or just logs.
             console.log('FCM Token:', token);
