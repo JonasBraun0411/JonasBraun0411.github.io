@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VoIP PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Firebase SDKs (Standard CDN) -->
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js"></script>
+    <!-- Removed /__/firebase/init.js dependency -->
+    
+    <!-- App Logic -->
+    <script defer src="app.js"></script>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>VoIP Proto</h1>
+            <button id="auth-btn" class="btn btn-primary">Login</button>
+        </header>
+
+        <div id="login-section">
+            <div class="login-form" style="display: flex; flex-direction: column; gap: 1rem; width: 100%; max-width: 300px;">
+                <p>Enter credentials to continue.</p>
+                <input type="email" id="email-input" placeholder="Email" style="padding: 0.5rem; font-size: 1rem;">
+                <input type="password" id="password-input" placeholder="Password" style="padding: 0.5rem; font-size: 1rem;">
+                <button id="email-login-btn" class="btn btn-primary">Sign In</button>
+            </div>
+        </div>
+
+        <div id="main-content">
+            <!-- Section 1: Call Interface -->
+            <div id="call-section" class="section">
+                <h2>Current Call</h2>
+                <div id="call-status">Idle</div>
+                <div class="controls">
+                    <button id="mute-btn" class="btn btn-secondary" disabled>Mute</button>
+                    <button id="hangup-btn" class="btn btn-danger" disabled>Hang Up</button>
+                    <button id="recall-btn" class="btn btn-success hidden">Call Again</button>
+                </div>
+                <audio id="remote-audio" autoplay></audio>
+            </div>
+
+            <!-- Section 2: Availability -->
+            <div id="availability-section" class="section">
+                <h2>Availability</h2>
+                <p>Set a time you are free for a call.</p>
+                <input type="datetime-local" id="availability-time">
+                <button id="set-availability-btn" class="btn btn-primary">Set Availability</button>
+                <div id="availability-display"></div>
+            </div>
+
+            <!-- Debug / Event Log -->
+            <div id="debug-section" class="section">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px;">
+                    <h2 style="margin:0;">Debug Log</h2>
+                    <div style="display:flex; gap:8px;">
+                        <button id="debug-clear-btn" class="btn btn-secondary" type="button">Clear</button>
+                        <button id="debug-toggle-btn" class="btn btn-secondary" type="button">Hide</button>
+                    </div>
+                </div>
+                <div id="debug-log" aria-live="polite"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
