@@ -210,16 +210,70 @@ document.addEventListener('DOMContentLoaded', () => {
     const muteBtn = document.getElementById('mute-btn');
     const hangupBtn = document.getElementById('hangup-btn');
     let isMuted = false;
+    const hasMediaSession = 'mediaSession' in navigator;
+    let mediaSessionActive = false;
 
-    muteBtn.addEventListener('click', () => {
-        if (!localStream) return;
-        const track = localStream.getAudioTracks()[0];
-        isMuted = !isMuted;
-        track.enabled = !isMuted;
+    function setMediaSessionMetadata() {
+        if (!hasMediaSession || typeof MediaMetadata === 'undefined') return;
+        const user = auth.currentUser;
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: 'VoIP Call',
+            artist: user?.email || 'Unknown',
+            album: 'VoIP PWA'
+        });
+    }
+
+    function setMediaSessionPlaybackState(state) {
+        if (!hasMediaSession) return;
+        try {
+            navigator.mediaSession.playbackState = state;
+        } catch (e) {
+            // Some browsers throw if playbackState is unsupported.
+        }
+    }
+
+    function setupMediaSessionHandlers() {
+        if (!hasMediaSession) return;
+        const safeSetHandler = (action, handler) => {
+            try {
+                navigator.mediaSession.setActionHandler(action, handler);
+            } catch (e) {
+                // Ignore unsupported actions.
+            }
+        };
+        safeSetHandler('play', () => applyMuteState(false));
+        safeSetHandler('pause', () => applyMuteState(true));
+        safeSetHandler('stop', () => hangupCall({ showAlert: false }));
+    }
+
+    function activateMediaSession() {
+        if (!hasMediaSession) return;
+        mediaSessionActive = true;
+        setMediaSessionMetadata();
+        setupMediaSessionHandlers();
+        setMediaSessionPlaybackState(isMuted ? 'paused' : 'playing');
+    }
+
+    function deactivateMediaSession() {
+        if (!hasMediaSession) return;
+        mediaSessionActive = false;
+        setMediaSessionPlaybackState('none');
+    }
+
+    function applyMuteState(nextMuted) {
+        if (typeof nextMuted !== 'boolean') return;
+        isMuted = nextMuted;
+        if (localStream) {
+            const track = localStream.getAudioTracks()[0];
+            if (track) track.enabled = !isMuted;
+        }
         muteBtn.textContent = isMuted ? 'Unmute' : 'Mute';
-    });
+        if (mediaSessionActive) {
+            setMediaSessionPlaybackState(isMuted ? 'paused' : 'playing');
+        }
+    }
 
-    hangupBtn.addEventListener('click', async () => {
+    async function hangupCall({ showAlert = true } = {}) {
         if (peerConnection) {
             peerConnection.close();
             peerConnection = null;
@@ -243,9 +297,20 @@ document.addEventListener('DOMContentLoaded', () => {
         isMuted = false;
         hangupBtn.disabled = true;
         document.getElementById('remote-audio').srcObject = null;
+        deactivateMediaSession();
         
-        // Reload page or re-listen? For prototype, simple reset:
-        alert("Call Ended");
+        if (showAlert) {
+            // Reload page or re-listen? For prototype, simple reset:
+            alert("Call Ended");
+        }
+    }
+
+    muteBtn.addEventListener('click', () => {
+        applyMuteState(!isMuted);
+    });
+
+    hangupBtn.addEventListener('click', async () => {
+        await hangupCall({ showAlert: true });
     });
     
     setAvailabilityBtn.addEventListener('click', async () => {
@@ -328,6 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Could not access microphone.");
             return;
         }
+        activateMediaSession();
 
         // 2. Create PeerConnection
         const config = {
@@ -446,6 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check connection state
             if (peerConnection.connectionState === 'connected') {
                  document.getElementById('call-status').textContent = "ACTIVE";
+                 setMediaSessionPlaybackState(isMuted ? 'paused' : 'playing');
                  if (updatedData.status !== 'active') {
                      // Update status to active only once
                      db.collection('calls').doc(callId).update({ status: 'active' });
